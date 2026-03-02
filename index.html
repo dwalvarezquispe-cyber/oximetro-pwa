@@ -12,6 +12,10 @@
     .data { font-size: 48px; margin: 20px; color: #0077cc; }
     #log { background: #1e1e1e; color: #0f0; padding: 10px; height: 150px; overflow-y: auto; text-align: left; font-family: monospace; font-size: 12px; }
   </style>
+  
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 </head>
 <body>
   <h1>🔗 Oxímetro BLE</h1>
@@ -21,6 +25,27 @@
   <div id="log"></div>
 
 <script>
+// Firebase config
+const firebaseConfig = {
+  apiKey: "AIzaSyAeF8grbsWqLHqHsoY3X4svld902q86h4g",
+  authDomain: "fd-pulsioximetro.firebaseapp.com",
+  databaseURL: "https://fd-pulsioximetro-default-rtdb.firebaseio.com",
+  projectId: "fd-pulsioximetro",
+  storageBucket: "fd-pulsioximetro.firebasestorage.app",
+  messagingSenderId: "870210833359",
+  appId: "1:870210833359:web:8c3b2625e9a45698e9dfa"
+};
+
+// Inicializar Firebase
+let database;
+try {
+  firebase.initializeApp(firebaseConfig);
+  database = firebase.database();
+  log("✅ Firebase conectado");
+} catch(e) {
+  log("❌ Error Firebase: " + e.message);
+}
+
 const SERVICE_UUID = "00001822-0000-1000-8000-00805f9b34fb";
 const CHAR_UUID = "00002a5f-0000-1000-8000-00805f9b34fb";
 
@@ -55,6 +80,24 @@ async function connect() {
       document.getElementById('bpm').textContent = bpm.toFixed(1);
       document.getElementById('spo2').textContent = spo2.toFixed(1);
       log("BPM: " + bpm.toFixed(1) + " SpO2: " + spo2.toFixed(1));
+      
+      // ENVIAR A FIREBASE
+      if (database) {
+        const data = {
+          bpm: parseFloat(bpm.toFixed(2)),
+          spo2: parseFloat(spo2.toFixed(2)),
+          timestamp: Date.now(),
+          fecha: new Date().toISOString()
+        };
+        
+        database.ref('pacientes/cama1/actual').set(data)
+          .then(() => log("☁️ Firebase actual"))
+          .catch(e => log("❌ Error: " + e.message));
+          
+        database.ref('pacientes/cama1/historial').push(data)
+          .then(() => log("☁️ Firebase historial"))
+          .catch(e => log("❌ Error: " + e.message));
+      }
     });
     
     log("Recibiendo datos...");
